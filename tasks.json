@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "tool": "nano-banana",
+    "cmd": "generate_character_sheet",
+    "target": "Musah - Production Dossier Style",
+    "gates": ["silhouette", "narrative"],
+    "output": "output/musah_v01.png"
+  },
+  {
+    "id": "2",
+    "tool": "superdesign",
+    "cmd": "create_color_palette",
+    "target": "Musah character palette - grounded tones",
+    "gates": [],
+    "output": "output/musah_palette.json"
+  },
+  {
+    "id": "3",
+    "tool": "blender-mcp",
+    "cmd": "create_mesh",
+    "target": "Musah base mesh - production ready",
+    "gates": ["performance"],
+    "output": "output/musah_mesh.blend"
+  }
+]

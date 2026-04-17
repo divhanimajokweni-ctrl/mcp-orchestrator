@@ -1,0 +1,13 @@
+{
+  "name": "superdesign-mcp",
+  "version": "1.0.0",
+  "description": "Super Design MCP Server - Design assistance tools",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
