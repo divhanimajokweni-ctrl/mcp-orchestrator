@@ -19,15 +19,19 @@ class MCPOrchestrator:
         # Try multiple config locations in order:
         # 1. Explicitly provided path
         # 2. ~/.config/mcp/mcp-config.json (standard location)
-        # 3. ./mcp-config.json (workspace-local)
-        # 4. ./config/mcp-config.json (local config subdir)
-        
+        # 3. <script_dir>/mcp-config.json (script-relative)
+        # 4. <script_dir>/.config/mcp-config.json (script-relative config subdir)
+        # 5. ./mcp-config.json (cwd-relative, legacy)
+        # 6. ./config/mcp-config.json (cwd-relative subdir, legacy)
+
         if config_path:
             self.config_path = Path(config_path).expanduser()
         else:
-            # Try standard locations
+            script_dir = Path(__file__).resolve().parent
             candidates = [
                 Path("~/.config/mcp/mcp-config.json").expanduser(),
+                script_dir / "mcp-config.json",
+                script_dir / ".config" / "mcp-config.json",
                 Path("./mcp-config.json"),
                 Path("./config/mcp-config.json"),
             ]
