@@ -257,7 +257,7 @@ class MCPOrchestrator:
 
 def main():
     parser = argparse.ArgumentParser(description="MCP Orchestrator for CLI-based agentic workflows")
-    parser.add_argument("--config", default="~/.config/mcp/mcp-config.json",
+    parser.add_argument("--config", default=None,
                        help="Path to MCP config file")
     parser.add_argument("--tasks", help="Path to tasks.json file")
     parser.add_argument("--server", help="Single server to execute")
