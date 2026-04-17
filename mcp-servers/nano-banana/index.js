@@ -8,6 +8,37 @@ import {
   ErrorCode,
 } from '@modelcontextprotocol/sdk/types.js';
 
+// Direct CLI mode: if --prompt is provided, generate placeholder image and exit
+const args = process.argv.slice(1);
+const promptIndex = args.indexOf('--prompt');
+if (promptIndex !== -1 && args.length > promptIndex + 1) {
+  (async () => {
+    const prompt = args[promptIndex + 1];
+    console.log(`[nano-banana] Received prompt: "${prompt}`);
+    console.log(`[nano-banana] Generating visual draft sketch...`);
+
+    // Ensure output directory exists
+    const fs = await import('fs');
+    const path = await import('path');
+    const outputDir = path.join(process.cwd(), 'output');
+    await fs.promises.mkdir(outputDir, { recursive: true });
+    const outputPath = path.join(outputDir, 'musah_v01.png');
+
+    // Minimal 1x1 black pixel PNG (base64)
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVQI12P4//8/AAX+Av7dzFtbAAAAAElFTkSuQmCC';
+    const buffer = Buffer.from(pngBase64, 'base64');
+    await fs.promises.writeFile(outputPath, buffer);
+
+    console.log(`[nano-banana] Draft saved to: ${outputPath}`);
+    // Print path for orchestrator extraction
+    console.log(outputPath);
+    process.exit(0);
+  })().catch(err => {
+    console.error('[nano-banana] Error:', err);
+    process.exit(1);
+  });
+}
+
 const server = new Server(
   { name: 'nano-banana', version: '1.0.0' },
   { capabilities: { tools: {} } }
