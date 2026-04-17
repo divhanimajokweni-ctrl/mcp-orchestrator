@@ -21,6 +21,6 @@
     "cmd": "create_mesh",
     "target": "Musah base mesh - production ready",
     "gates": ["performance"],
-    "output": "output/musah_mesh.blend"
+    "output": "output/musah_mesh_render.png"
   }
 ]
