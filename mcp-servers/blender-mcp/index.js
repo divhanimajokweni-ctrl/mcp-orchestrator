@@ -72,6 +72,40 @@ function drawChar(png, width, char, x, y, size, r, g, b) {
   }
 }
 
+// Helper: fill convex quad via triangle fan (simple)
+function fillQuad(png, width, v0, v1, v2, v3, r, g, b) {
+  // Split quad into two triangles
+  fillTriangle(png, width, v0[0], v0[1], v1[0], v1[1], v2[0], v2[1], r, g, b);
+  fillTriangle(png, width, v0[0], v0[1], v2[0], v2[1], v3[0], v3[1], r, g, b);
+}
+
+function fillTriangle(png, width, x1, y1, x2, y2, x3, y3, r, g, b) {
+  const minX = Math.min(x1, x2, x3);
+  const maxX = Math.max(x1, x2, x3);
+  const minY = Math.min(y1, y2, y3);
+  const maxY = Math.max(y1, y2, y3);
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (barycentric(x, y, x1, y1, x2, y2, x3, y3) >= 0) {
+        if (x >= 0 && x < width && y >= 0 && y < png.height) {
+          const idx = (width * y + x) << 2;
+          png.data[idx] = r;
+          png.data[idx + 1] = g;
+          png.data[idx + 2] = b;
+          png.data[idx + 3] = 255;
+        }
+      }
+    }
+  }
+}
+
+function barycentric(px, py, x1, y1, x2, y2, x3, y3) {
+  const area = 0.5 * (-y2*x3 + y1*(-x2 + x3) + x1*(y2 - y3) + x2*y3);
+  const s = 1/(2*area) * (y1*x3 - x1*y3 + (x3 - x1)*py + (y1 - y3)*px);
+  const t = 1/(2*area) * (x1*y2 - y1*x2 + (x1 - x2)*py + (y2 - y1)*px);
+  return s >= 0 && t >= 0 && (1 - s - t) >= 0 ? s + t : -1;
+}
+
 // Direct CLI mode: if --prompt is provided, execute create_mesh directly and exit
 const args = process.argv.slice(1);
 const promptIndex = args.indexOf('--prompt');
@@ -89,7 +123,7 @@ if (promptIndex !== -1 && args.length > promptIndex + 1) {
       await fs.promises.mkdir(outDir, { recursive: true });
       const outPath = path.join(outDir, 'musah_mesh_render.png');
 
-      // Generate simple cube preview
+      // Generate simple cube preview with shading
       const width = 400;
       const height = 400;
       const png = new PNG({ width, height });
@@ -102,53 +136,74 @@ if (promptIndex !== -1 && args.length > promptIndex + 1) {
         png.data[i + 3] = 255;// A
       }
 
-      // Helper to draw line (Bresenham)
-      const drawLine = (x0, y0, x1, y1, r, g, b) => {
+      // Helper: set pixel
+      const setPixel = (x, y, r, g, b) => {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          const idx = (width * y + x) << 2;
+          png.data[idx] = r; png.data[idx + 1] = g; png.data[idx + 2] = b; png.data[idx + 3] = 255;
+        }
+      };
+
+      // Helper: shaded line
+      function drawShadedLine(png, width, x0, y0, x1, y1, r, g, b) {
         let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
         let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
         let err = dx + dy;
         while (true) {
-          if (x0 >= 0 && x0 < width && y0 >= 0 && y0 < height) {
-            const idx = (width * y0 + x0) << 2;
-            png.data[idx] = r; png.data[idx + 1] = g; png.data[idx + 2] = b; png.data[idx + 3] = 255;
-          }
+          setPixel(x0, y0, r, g, b);
           if (x0 === x1 && y0 === y1) break;
           const e2 = 2 * err;
           if (e2 >= dy) { err += dy; x0 += sx; }
           if (e2 <= dx) { err += dx; y0 += sy; }
         }
-      };
+      }
 
-      // Cube vertices (centered, perspective-ish)
+      // 3D cube with isometric-ish projection
       const cx = width / 2, cy = height / 2;
-      const size = 80;
-      // Simple orthographic projection: front face
-      const vFront = [
-        [cx - size, cy - size], // top-left
-        [cx + size, cy - size], // top-right
-        [cx + size, cy + size], // bottom-right
-        [cx - size, cy + size], // bottom-left
-      ];
-      const vBack = [
-        [cx - size - 40, cy - size - 40], // back top-left
-        [cx + size - 40, cy - size - 40], // back top-right
-        [cx + size - 40, cy + size - 40], // back bottom-right
-        [cx - size - 40, cy + size - 40], // back bottom-left
-      ];
-      const vertices = [...vFront, ...vBack];
+      const s = 70;  // half-size
+      const depth = 40;
 
-      // Draw edges
+      // Vertices (front then back)
+      const vertices = [
+        [cx - s, cy - s],      // 0: front top-left
+        [cx + s, cy - s],      // 1: front top-right
+        [cx + s, cy + s],      // 2: front bottom-right
+        [cx - s, cy + s],      // 3: front bottom-left
+        [cx - s - depth, cy - s - depth], // 4: back top-left
+        [cx + s - depth, cy - s - depth], // 5: back top-right
+        [cx + s - depth, cy + s - depth], // 6: back bottom-right
+        [cx - s - depth, cy + s - depth], // 7: back bottom-left
+      ];
+
+      // Faces with colors (top, right, left)
+      const faces = [
+        { idx: [0,1,2,3], color: [60, 60, 100] },     // front (darker)
+        { idx: [4,5,6,7], color: [40, 40, 70] },     // back (darkest)
+        { idx: [0,1,5,4], color: [80, 80, 140] },    // top (medium)
+        { idx: [1,2,6,5], color: [100, 100, 160] },  // right (brightest)
+        { idx: [0,3,7,4], color: [50, 50, 80] },     // left (dark)
+        { idx: [3,2,6,7], color: [70, 70, 110] },    // bottom (medium-dark)
+      ];
+
+      // Draw filled faces (simple scan-convex quad)
+      faces.forEach(face => {
+        const v = face.idx.map(i => vertices[i]);
+        fillQuad(png, width, v[0], v[1], v[2], v[3], face.color[0], face.color[1], face.color[2]);
+      });
+
+      // Draw edges (gold)
       const edges = [
-        [0,1],[1,2],[2,3],[3,0], // front
-        [4,5],[5,6],[6,7],[7,4], // back
-        [0,4],[1,5],[2,6],[3,7]  // connecting
+        [0,1],[1,2],[2,3],[3,0],
+        [4,5],[5,6],[6,7],[7,4],
+        [0,4],[1,5],[2,6],[3,7]
       ];
-      edges.forEach(e => drawLine(vertices[e[0]][0], vertices[e[0]][1], vertices[e[1]][0], vertices[e[1]][1], 201, 166, 39)); // gold
+      edges.forEach(e => {
+        drawShadedLine(png, width, vertices[e[0]][0], vertices[e[0]][1], vertices[e[1]][0], vertices[e[1]][1], 201, 166, 39);
+      });
 
-      // Fill front face with semi-transparent color (PNG doesn't support alpha blending simply; skip)
-      // Instead draw a simple "MUSAH" label
-      ctxFillText(png, width, 'MUSAH', cx, cy + 120, 24, 201, 166, 39);
-      ctxFillText(png, width, 'MESH PREVIEW', cx, cy + 150, 14, 180, 180, 200);
+      // Label
+      ctxFillText(png, width, 'MUSAH', cx, cy + 120, 24, 240, 230, 210);
+      ctxFillText(png, width, 'MESH CUBE', cx, cy + 150, 14, 201, 166, 39);
 
       // Write PNG
       const buffer = PNG.sync.write(png);

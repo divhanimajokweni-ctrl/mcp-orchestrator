@@ -31,7 +31,115 @@ if (promptIndex !== -1 && args.length > promptIndex + 1) {
     const height = 800;
     const png = new PNG({ width, height });
 
-    // ... [drawing code unchanged] ...
+    // === BACKGROUND ===
+    // Dark blue gradient
+    for (let y = 0; y < height; y++) {
+      const t = y / height;
+      const r = Math.round(26 + t * 10);   // 26 → 36
+      const g = Math.round(26 + t * 15);   // 26 → 41
+      const b = Math.round(46 + t * 20);   // 46 → 66
+      for (let x = 0; x < width; x++) {
+        const idx = (width * y + x) << 2;
+        png.data[idx] = r;
+        png.data[idx + 1] = g;
+        png.data[idx + 2] = b;
+        png.data[idx + 3] = 255;
+      }
+    }
+
+    // === DECORATIVE CORNERS ===
+    drawCorner(png, width, height, 30, 30, 120, 120, 201, 166, 39); // gold L
+    drawCorner(png, width, height, width-30, 30, -120, 120, 201, 166, 39);
+    drawCorner(png, width, height, 30, height-30, 120, -120, 201, 166, 39);
+    drawCorner(png, width, height, width-30, height-30, -120, -120, 201, 166, 39);
+
+    // === HEADER SECTION ===
+    // Top bar with gradient
+    for (let y = 50; y < 180; y++) {
+      for (let x = 50; x < width - 50; x++) {
+        const idx = (width * y + x) << 2;
+        png.data[idx] = 15;      // #0f3460
+        png.data[idx + 1] = 52;
+        png.data[idx + 2] = 96;
+      }
+    }
+    // Gold top border line
+    for (let x = 50; x < width - 50; x++) {
+      const idx1 = (width * 50 + x) << 2;
+      const idx2 = (width * 51 + x) << 2;
+      [idx1, idx2].forEach(idx => {
+        png.data[idx] = 201; png.data[idx + 1] = 166; png.data[idx + 2] = 39;
+        png.data[idx + 3] = 255;
+      });
+    }
+
+    // === TITLE ===
+    ctxFillText(png, width, "MUSAH", width / 2, 110, 56, 240, 230, 210); // cream
+    ctxFillText(png, width, "PRODUCTION", width / 2, 155, 20, 201, 166, 39); // gold
+    ctxFillText(png, width, "DOSSIER", width / 2, 180, 20, 201, 166, 39);
+
+    // === CHARACTER SILHOUETTE (Epic Warrior) ===
+    const cx = width / 2, cy = height / 2 + 50;
+
+    // Body (trapezoid shape)
+    fillPoly(png, width,
+      [cx - 70, cy + 60],   // bottom-left
+      [cx + 70, cy + 60],   // bottom-right
+      [cx + 50, cy - 80],   // top-right
+      [cx - 50, cy - 80],   // top-left
+      45, 45, 67
+    );
+
+    // Head
+    fillEllipse(png, width, cx, cy - 140, 45, 55, 240, 230, 210);
+
+    // Shoulder pads (armor)
+    fillEllipse(png, width, cx - 85, cy - 50, 35, 45, 201, 166, 39);
+    fillEllipse(png, width, cx + 85, cy - 50, 35, 45, 201, 166, 39);
+
+    // Arms
+    fillRectRounded(png, width, cx - 120, cy - 20, 30, 100, 15, 70, 70, 70);
+    fillRectRounded(png, width, cx + 90, cy - 20, 30, 100, 15, 70, 70, 70);
+
+    // Spear shaft
+    drawThickLine(png, width, cx + 60, cy - 220, cx + 60, cy + 30, 8, 201, 166, 39);
+    // Spearhead
+    fillTriangle(png, width,
+      cx + 60, cy - 250,
+      cx + 45, cy - 210,
+      cx + 75, cy - 210,
+      240, 230, 180
+    );
+
+    // Cape/Cloth flowing behind
+    fillPoly(png, width,
+      [cx - 65, cy + 60],
+      [cx + 65, cy + 60],
+      [cx + 80, cy + 180],
+      [cx - 80, cy + 180],
+      60, 60, 120, 0.7);
+
+    // === INFO PANELS ===
+    const panelY = 600;
+    // Left panel
+    drawPanel(png, width, 50, panelY, 250, 180, 15, 52, 96, 201, 166, 39);
+    // Right panel  
+    drawPanel(png, width, 300, panelY, 250, 180, 15, 52, 96, 201, 166, 39);
+
+    // Panel text labels
+    ctxFillText(png, width, "CLASS: WARRIOR", 65, panelY + 35, 16, 240, 230, 210);
+    ctxFillText(png, width, "ORIGIN: DOSSIER", 65, panelY + 65, 16, 240, 230, 210);
+    ctxFillText(png, width, "STATUS: ACTIVE", 65, panelY + 95, 16, 240, 230, 210);
+    ctxFillText(png, width, "WEAPON: SPEAR", 65, panelY + 125, 14, 180, 180, 200);
+
+    ctxFillText(png, width, "THREAT: HIGH", 315, panelY + 35, 16, 240, 230, 210);
+    ctxFillText(png, width, "AFFIL: NONE", 315, panelY + 65, 16, 240, 230, 210);
+    ctxFillText(png, width, "LAST: 2077.04.17", 315, panelY + 95, 16, 240, 230, 210);
+    ctxFillText(png, width, "ID: MUSAH-001", 315, panelY + 125, 14, 180, 180, 200);
+
+    // === FOOTER ===
+    ctxFillText(png, width, "nano-banana MCP server", width / 2, height - 50, 14, 120, 120, 120);
+    ctxFillText(png, width, "MUSAH VISUAL DRAFT v1.0", width / 2, height - 30, 14, 201, 166, 39);
 
     // Write PNG
     const buffer = PNG.sync.write(png);
@@ -60,6 +168,120 @@ function fillEllipse(png, width, cx, cy, rx, ry, r, g, b) {
         }
       }
     }
+  }
+}
+
+// Helper: fill convex polygon (simple scanline for n vertices)
+function fillPoly(png, width, ...points) {
+  if (points.length < 3) return;
+  const color = points.pop(); // last 3 args are r,g,b
+  const r = color[0], g = color[1], b = color[2];
+  const alpha = color[3] !== undefined ? color[3] : 255;
+  const verts = points.flat(); // flatten [[x,y],...] to [x,y,...]
+  const n = verts.length / 2;
+  const xs = [], ys = [];
+  for (let i = 0; i < n; i++) { xs.push(verts[i*2]); ys.push(verts[i*2+1]); }
+
+  const ymin = Math.min(...ys), ymax = Math.max(...ys);
+  for (let y = ymin; y <= ymax; y++) {
+    const intxs = [];
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      if ((ys[i] <= y && y < ys[j]) || (ys[j] <= y && y < ys[i])) {
+        const x = xs[i] + (y - ys[i]) * (xs[j] - xs[i]) / (ys[j] - ys[i]);
+        intxs.push(Math.round(x));
+      }
+    }
+    intxs.sort((a,b) => a-b);
+    for (let k = 0; k < intxs.length; k += 2) {
+      if (k+1 < intxs.length) {
+        for (let x = intxs[k]; x <= intxs[k+1]; x++) {
+          if (x >= 0 && x < width && y >= 0 && y < png.height) {
+            const idx = (width * y + x) << 2;
+            png.data[idx] = r; png.data[idx+1] = g; png.data[idx+2] = b; png.data[idx+3] = alpha;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Helper: draw thick line
+function drawThickLine(png, width, x0, y0, x1, y1, thick, r, g, b) {
+  for (let t = -thick/2; t < thick/2; t++) {
+    drawLine(png, width, x0+t, y0, x1+t, y1, r, g, b);
+  }
+}
+
+function drawLine(png, width, x0, y0, x1, y1, r, g, b) {
+  let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  while (true) {
+    if (x0 >= 0 && x0 < width && y0 >= 0 && y0 < png.height) {
+      const idx = (width * y0 + x0) << 2;
+      png.data[idx] = r; png.data[idx + 1] = g; png.data[idx + 2] = b; png.data[idx + 3] = 255;
+    }
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
+function fillRectRounded(png, width, x, y, w, h, r, red, green, blue) {
+  // Simple rect (no round corners)
+  for (let py = y; py < y + h; py++) {
+    for (let px = x; px < x + w; px++) {
+      if (px >= 0 && px < width && py >= 0 && py < png.height) {
+        const idx = (width * py + px) << 2;
+        png.data[idx] = red; png.data[idx+1] = green; png.data[idx+2] = blue; png.data[idx+3] = 255;
+      }
+    }
+  }
+}
+
+function drawCorner(png, width, height, x, y, dx, dy, r, g, b) {
+  // Draw L-shaped corner decoration
+  const len = 50;
+  for (let i = 0; i < len; i++) {
+    const ix = x + (dx > 0 ? i : -i);
+    const iy = y + (dy > 0 ? i : -i);
+    if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+      const idx1 = (width * iy + ix) << 2;
+      png.data[idx1] = r; png.data[idx1+1] = g; png.data[idx1+2] = b;
+    }
+  }
+  for (let i = 0; i < len; i++) {
+    const ix = x + (dx > 0 ? i : -i);
+    const iy = y + (dy > 0 ? len - i : -(len - i));
+    if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+      const idx2 = (width * iy + ix) << 2;
+      png.data[idx2] = r; png.data[idx2+1] = g; png.data[idx2+2] = b;
+    }
+  }
+}
+
+function drawPanel(png, width, x, y, w, h, br, bg, bb, tr, tg, tb) {
+  // Panel background with rounded corners omitted for simplicity
+  for (let py = y; py < y + h; py++) {
+    for (let px = x; px < x + w; px++) {
+      if (px >= 0 && px < width && py >= 0 && py < png.height) {
+        const idx = (width * py + px) << 2;
+        png.data[idx] = br; png.data[idx+1] = bg; png.data[idx+2] = bb;
+      }
+    }
+  }
+  // Border
+  for (let i = 0; i < w; i++) {
+    const top = (width * y + x + i) << 2;
+    const bottom = (width * (y + h - 1) + x + i) << 2;
+    [top, bottom].forEach(idx => { png.data[idx] = tr; png.data[idx+1] = tg; png.data[idx+2] = tb; });
+  }
+  for (let i = 0; i < h; i++) {
+    const left = (width * (y + i) + x) << 2;
+    const right = (width * (y + i) + x + w - 1) << 2;
+    [left, right].forEach(idx => { png.data[idx] = tr; png.data[idx+1] = tg; png.data[idx+2] = tb; });
   }
 }
 
