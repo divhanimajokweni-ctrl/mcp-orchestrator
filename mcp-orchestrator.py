@@ -15,8 +15,38 @@ import argparse
 class MCPOrchestrator:
     """Master control for MCP server orchestration in CLI environments"""
 
-    def __init__(self, config_path: str = "~/.config/mcp/mcp-config.json"):
-        self.config_path = Path(config_path).expanduser()
+    def __init__(self, config_path: str = None):
+        # Try multiple config locations in order:
+        # 1. Explicitly provided path
+        # 2. ~/.config/mcp/mcp-config.json (standard location)
+        # 3. ./mcp-config.json (workspace-local)
+        # 4. ./config/mcp-config.json (local config subdir)
+        
+        if config_path:
+            self.config_path = Path(config_path).expanduser()
+        else:
+            # Try standard locations
+            candidates = [
+                Path("~/.config/mcp/mcp-config.json").expanduser(),
+                Path("./mcp-config.json"),
+                Path("./config/mcp-config.json"),
+            ]
+            for candidate in candidates:
+                if candidate.exists():
+                    self.config_path = candidate
+                    break
+            else:
+                # No config found - show helpful error
+                print("ERROR: MCP config file not found.", file=sys.stderr)
+                print("", file=sys.stderr)
+                print("Searched in:", file=sys.stderr)
+                for c in candidates:
+                    print(f"  - {c}", file=sys.stderr)
+                print("", file=sys.stderr)
+                print("Create a config file at ~/.config/mcp/mcp-config.json:", file=sys.stderr)
+                print('  {"mcpServers": {"your-server": {"command": "node", "args": ["path/to/server.js"]}}}', file=sys.stderr)
+                sys.exit(1)
+
         with open(self.config_path) as f:
             self.servers = json.load(f)['mcpServers']
         self.vision_model = "llava"  # Local vision model for gate validation
@@ -51,7 +81,28 @@ class MCPOrchestrator:
             base_args.extend(args)
 
         full_command = [cmd] + base_args + ["--prompt", prompt]
-        return subprocess.run(full_command, capture_output=True, text=True)
+
+        try:
+            result = subprocess.run(full_command, capture_output=True, text=True, timeout=60)
+            if result.returncode != 0:
+                print(f"Server '{server_name}' exited with error:", file=sys.stderr)
+                print(f"  Command: {' '.join(full_command)}", file=sys.stderr)
+                print(f"  stderr: {result.stderr[:500]}", file=sys.stderr)
+                print(f"  stdout: {result.stdout[:500]}", file=sys.stderr)
+                print("\nTIP: Ensure the MCP server is running. Start with:", file=sys.stderr)
+                print(f"  tmux send-keys -t mcp-servers 'Enter'  # if in tmux session", file=sys.stderr)
+                print(f"  Or: ./scripts/start_mcp_servers.sh", file=sys.stderr)
+            return result
+        except FileNotFoundError as e:
+            print(f"ERROR: Command not found: {cmd}", file=sys.stderr)
+            print(f"  Full command: {' '.join(full_command)}", file=sys.stderr)
+            print(f"  Install {cmd} or check your PATH", file=sys.stderr)
+            raise
+        except subprocess.TimeoutExpired:
+            print(f"ERROR: Server '{server_name}' timed out after 60s", file=sys.stderr)
+            print("  The server may be hung or not responding.", file=sys.stderr)
+            print("  Try: Restart the server in tmux session", file=sys.stderr)
+            raise
 
     def validate_output(self, image_path: str, gates: List[str]) -> Dict[str, bool]:
         """

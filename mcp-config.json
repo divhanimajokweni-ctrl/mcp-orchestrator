@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "nano-banana": {
+      "command": "node",
+      "args": ["/home/runner/workspace/mcp-servers/nano-banana/index.js"]
+    },
+    "superdesign": {
+      "command": "node",
+      "args": ["/home/runner/workspace/mcp-servers/superdesign/index.js"]
+    },
+    "blender-mcp": {
+      "command": "node",
+      "args": ["/home/runner/workspace/mcp-servers/blender-mcp/index.js"]
+    }
+  }
+}
